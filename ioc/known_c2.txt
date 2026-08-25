@@ -1,0 +1,17 @@
+# 银狐木马 C2 / 钓鱼 域名与 IP (手动维护区，入库)
+# 自动更新内容会写入 ioc/auto_c2.txt，请勿手改本文件中的自动条目。
+# 来源: 奇安信威胁情报中心 2026-07《银狐Ghost分发商投递MODBEACON》
+skystackservice.com
+fast-cloud-node.com
+nd9c887r.com
+damaix9k.com
+vaeth.cn
+kkuu8899.org
+cn-mumu.com.cn
+182.16.88.242
+tu-tbtool.com.cn # 假图吧工具 假官网 [银狐样本 2026-08]
+www.tu-tbtool.com.cn # 假图吧工具 假官网 [银狐样本 2026-08]
+noah-ssh.com.cn # 银狐中继/发现节点(第一优先级) [银狐样本 2026-08]
+noah-sk.com # 银狐中继 [银狐样本 2026-08]
+noah-relay.wotudj578.workers.dev # Cloudflare Workers 中继(已标恶意) [银狐样本 2026-08]
+www.xujvgk.cn # 下载落地域 [银狐样本 2026-08]

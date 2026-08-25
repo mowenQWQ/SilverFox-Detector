@@ -1,0 +1,8 @@
+﻿*.log
+*.tmp
+*.flag
+*.syso
+.cowork-temp/
+_packsrc_*/
+__pycache__/
+*.pyc

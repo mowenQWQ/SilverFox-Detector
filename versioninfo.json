@@ -1,0 +1,41 @@
+{
+  "FixedFileInfo": {
+    "FileVersion": {
+      "Major": 2,
+      "Minor": 15,
+      "Patch": 74,
+      "Build": 0
+    },
+    "ProductVersion": {
+      "Major": 2,
+      "Minor": 15,
+      "Patch": 74,
+      "Build": 0
+    },
+    "FileFlagsMask": "3f",
+    "FileFlags": "00",
+    "FileOS": "040004",
+    "FileType": "01",
+    "FileSubType": "00"
+  },
+  "StringFileInfo": {
+    "Comments": "顽固木马扫描专杀-银狐特攻 (SilverFox Detector) 主检测 + 小工具(文件/文件夹占用检测). v2.14 修 bat 嵌套括号陷阱. v2.14.1 修复发布: 重签 integrity.manifest, 补全 银狐检测.bat 主入口, 命令行扫描.bat 转 CRLF. v2.15 自保护下沉到 exe: 进程 DACL 防杀 + 文件完整性自检 + 看门狗自愈. v2.15.2 修复关闭 GUI 后进程残留: 引擎经 start 脱离父进程成独立树, 关闭 exe 时不被回收; 现把启动的 cmd.exe 放入 Job Object(设 KILL_ON_JOB_CLOSE), exe 退出即由 OS 关闭 job 句柄, 整棵引擎进程树一并终止; 看门狗刻意不进此 job 以保自愈. v2.15.4 修复 /diag 等子工具模式跳过 PowerShell 查找导致误报 PowerShell not found (新增 ENSURE_PS 兜底); 退出时 best-effort taskkill 兜底清理引擎树(Job Object 之外第二层保险); 提权模式因 Windows 限制无法强制回收, 需手动关闭. v2.15.5 彻底修复提权模式进程残留: 由【对子进程 runas】改为【以 runas 重启整个 exe (--elevated-run)】; 新 exe 以管理员令牌运行, 其 spawn 的 cmd/引擎继承同令牌且仍在它自身的 Job Object 内, exe 退出时 OS 自动回收整棵引擎树, 不再残留 v2.15.6 降级近似 PPL(受保护进程轻量级): 真 PPL-Antimalware 需微软反恶意软件(ELAM)认证签名, 普通 Authenticode 证书无法让内核以 Antimalware signer 级别启动进程; 故在用户态(Ring3)尽量逼近: ① 进程缓解策略 SetProcessMitigationPolicy/NtSetInformationProcess —— 禁动态代码(防 shellcode/内存注入)、仅加载微软/Store 签名 DLL(防 DLL 侧载注入)、禁远程/低 IL 镜像、严格句柄检查; ② 完整性级别(MIC)提升到 High,低 IL 进程无法 OpenProcess 本进程; ③ 禁用 SeDebugPrivilege 降低 Token 被劫持价值. 三者叠加在既有 DACL+看门狗之上, 全部 best-effort(失败仅日志). 引擎子进程(cmd/bat/ps1)同样施加缓解策略 v2.15.7 进程与线程监控(用户态 A+B 组合): 监视系统中所有进程的创建/结束; A) Toolhelp 快照轮询(CreateToolhelp32Snapshot+Process32)每~1.5s 差集出新/退进程; B) ETW 实时订阅 Microsoft-Windows-Kernel-Process(OpenTrace+EnableTraceEx2+ProcessTrace)拿实时创建/退出事件, 需管理员且 Wine 无内核提供者故 best-effort 回退 A. 反制前先判定'是什么程序': 采集镜像路径/父进程/代码签名(WinVerifyTrust)+路径启发(是否 System32/临时目录/冒充系统进程名)+父链启发(父是浏览器/Office/脚本宿主却拉起未签名 exe); 仅当'终止型工具(taskkill/powershell Stop-Process/ProcessHacker 等)且非 Microsoft/有效签名'才主动 TerminateProcess(自身 High IL 对低 IL 目标有权)并取证, 正常签名系统工具不误杀; 触发自身被终止时由既有看门狗自愈重启. 全部 best-effort(失败仅日志). v2.15.8 EDR-Freeze 反冻防御(用户态纵深, 非内核驱动): ① 心跳反冻 —— 独立 goroutine 周期性用 OpenThread+NtQueryInformationThread 查本进程线程 SuspendCount, 发现被 SuspendThread/NtSuspendProcess 挂起即 ResumeThread 立即恢复, 并刷新存活标记使看门狗正确区分'被冻结(应等待恢复)'而非'被杀(应重启)'; ② 线程挂起监控 —— CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD) 枚举本进程全部线程, 对任意 SuspendCount>0 的线程主动 ResumeThread; ③ best-effort WER 自禁用 —— WerSetFlags(WER_FAULT_REPORTING_NO_HEAP_DUMP) 尝试关闭本进程 WER 堆转储, 缩小可被 WerFaultSecure/MiniDumpWriteDump 转储的暴露面(Wine 等缺该 API 时自动 recover 跳过). 已知边界: 真正堵死 EDR-Freeze 需内核级 ObRegisterCallbacks/NtSuspendThread 拦截(需驱动+微软交叉签名), Ring3 无法从根上禁止 SeDebug 持有者再次挂起线程 —— 反冻是'反复拉起'的猫鼠博弈, 能显著抬高攻击成本、防止'一次冻结永久失联', 但不提供内核级不可绕过保证. 同时全源码漏洞审计: 修复主检测 bat 中 powershell -Command 把 %* 直接拼进命令字符串的命令行注入面, 改为 -File 调用(参数按字面量传入, 功能等价且消除注入); 其余 exe/ps1/py 经审计无非预期注入/TOCTOU/特权滥用问题(所有子进程调用均为参数数组; 注册表右键命令已引号包裹; 引擎联网 IOC 仅取自硬编码可信源). v2.15.9 三档自保护(用户态硬钩子+双向心跳守护+急救箱): 同一份源码经编译期注入 main.buildTier(1/2/3) 产出三个文件 —— 档1 SilverFox.exe(标准自保: DACL+缓解+完整性+单向看门狗+进程监控+反冻, 不需UAC); 档2 SilverFox.Heartbeat.exe(档1+双向心跳看门狗: 主↔看门狗互相探活, 启动即UAC一次); 档3 SilverFox.Hard.com(档2+用户态 inline hook 拦自身 NtTerminateProcess/NtSuspendProcess/NtSuspendThread + 高权限守护进程双向心跳, 模仿系统急救箱). 双向心跳: 文件心跳(sf_hb_*.tmp 写 GetTickCount64 时间戳)实现主/看门狗/守护三方互探活, 任一方被杀/冻结另一方秒级拉起; 档3 守护以 runas 提权(SYSTEM 服务为可选最强常驻, GUI 按钮安装/卸载). 用户态 inline hook: 纯 Go trampoline(改写 ntdll 函数头 E9 rel32 跳板+备份原头 trampoline), 仅拦指向自身的终止/挂起请求返回 STATUS_ACCESS_DENIED; 安装失败/在 Wine 下 ntdll 布局差异则 recover 降级到反冻+心跳, 绝不阻断. 诚实边界: 用户态自保(心跳/钩子/守护)对持有 SeDebugPrivilege 的管理员/驱动不可绕过(与 PPL/EDR-Freeze 同一结论), 档3 为急救箱式最强用户态档, 非 Ring0; 真正不可绕过全部 best-effort. v2.15.15: 修复启动器 9020 (真实 pwsh 路径优先/WindowsApps 别名兜底告警/stderr 捕获); 引擎 v1.60 签名安全港+弱信号降权+启动环境日志降误报; Go 层完整性验签 payload 与 PS 层对齐. v2.15.16: 修复交付包引擎/UI ps1 双重 BOM (PS5.1 静默拒绝执行), 恢复单 BOM + banner 版本同步 v1.60 + manifest 重签. v2.15.17: bat 启动器 v1.58 修复 UAC 提权 (-Command 字符串模式 $args 恒为空改 env 传参+split+空参双分支). v2.15.18: 引擎 v1.61 修复 TrimEnd char 坑 + 关机拦截(WMI 参数集/System32 识别自身标记 kill/250ms) + 控制台编码统一 936 修尾部乱码. v2.15.19: 关机拦截层3 重建(隐藏窗口 WM_QUERYENDSESSION=FALSE 阻止系统关机 + Register-WmiEvent 通道). v2.15.20: 层3 C# 双修复(MSG 未初始化 CS0165 + GetModuleHandleW 模块错误)隐藏窗口生效; 对外名称统一「银狐检测工具」. v2.15.21: 档2/档3 交付入口改名为「如果主程序打不开点我」; 引擎加 QUERYENDSESSION 到达诊断日志. v2.15.22: 新增一键下载并打开 360 系统急救箱便携脚本(独立文件夹/动态识别/启动检测/按序降级). v2.15.34: 下载失败自动排障链(UAC 提权 -> hosts 移除 360 域名重定向 -> 重试下载).",
+    "CompanyName": "莫问QWQ",
+    "FileDescription": "顽固木马扫描专杀-银狐特攻 2.15.58 - 银狐特攻",
+    "FileVersion": "2.15.74.0",
+    "InternalName": "SilverFoxDetector",
+    "LegalCopyright": "© 2026 莫问QWQ. All rights reserved. (MIT License, see LICENSE)",
+    "LegalTrademarks": "",
+    "OriginalFilename": "顽固木马扫描专杀-银狐特攻.exe",
+    "PrivateBuild": "",
+    "ProductName": "顽固木马扫描专杀-银狐特攻",
+    "ProductVersion": "2.15.74.0",
+    "SpecialBuild": ""
+  },
+  "VarFileInfo": {
+    "Translation": {
+      "LangID": "0409",
+      "CharsetID": "04B0"
+    }
+  }
+}

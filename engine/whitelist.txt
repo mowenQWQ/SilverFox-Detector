@@ -1,0 +1,126 @@
+# 银狐木马检测工具 - 白名单 (v1.60, v2.15.15 扩展)
+# 格式: 每行一条规则, # 开头为注释
+#   签名者白名单:  signer:<签名者名称>   (文件 Authenticode 有效签名且签名者匹配 -> 视为可信)
+#   目录白名单:    dir:<目录前缀>        (路径以该前缀开头 -> 视为可信)
+#   路径白名单:    <完整路径>
+#   名称白名单:    <文件名>             (仅按文件名匹配, 慎用)
+# 命中白名单的项将不再报警 (计划任务/服务/自启动/进程/文件)
+
+# --- 常见可信签名者 (可自行增删) ---
+signer:Microsoft Corporation
+signer:Microsoft Windows
+signer:Microsoft Windows Publisher
+signer:Google LLC
+signer:Google Inc
+signer:Mozilla Corporation
+signer:Apple Inc.
+signer:Adobe Inc.
+signer:Intel(R) Software Development Products
+signer:Intel Corporation
+signer:NVIDIA Corporation
+signer:Advanced Micro Devices, Inc.
+signer:Realtek Semiconductor Corp.
+signer:WPS Office
+signer:Beijing Kingsoft Office Software, Inc.
+signer:Kingsoft Corporation
+signer:Tencent Technology(Shenzhen) Company Limited
+signer:Tencent Technology (Shenzhen) Company Limited
+signer:Alibaba (China) Co., Ltd.
+signer:ByteDance Inc.
+signer:Microsoft Azure
+signer:Oracle Corporation
+signer:VMware, Inc.
+signer:7-Zip
+signer:Notepad++
+signer:GitHub, Inc.
+signer:Python Software Foundation
+signer:The Qt Company
+signer:Electron Authors
+signer:360 Security Technology Inc.
+signer:Qihoo 360 Software (Beijing) Company Limited
+signer:Huo Rong Safe Co., Ltd.
+signer:HUAWEI Technologies Co., Ltd.
+signer:Xiaomi Inc.
+signer:OPPO Guangdong Mobile Communications Co., Ltd.
+signer:vivo Mobile Communication Co., Ltd.
+
+# v1.60 (v2.15.15): 扩展常见可信签名者 (百度/网易/搜狗/爱奇艺/荣耀/华硕/戴尔/惠普/联想/Steam/Epic/Riot/Ubisoft/JetBrains/Docker/VideoLAN)
+signer:Baidu Online Network Technology (Beijing) Co., Ltd.
+signer:Baidu
+signer:Hangzhou NetEase Network Co., Ltd.
+signer:NetEase (Hangzhou) Network Co., Ltd.
+signer:NetEase
+signer:Sogou.com Inc.
+signer:Sogou
+signer:Beijing IQYI Technology Co., Ltd.
+signer:iQIYI
+signer:Honor Terminal Co., Ltd.
+signer:Honor Device Co., Ltd.
+signer:ASUSTeK Computer Inc.
+signer:ASUS
+signer:Dell Inc.
+signer:HP Inc.
+signer:Hewlett-Packard Company
+signer:Lenovo (Beijing) Co., Ltd.
+signer:Lenovo
+signer:Valve Corp.
+signer:Steam
+signer:Epic Games, Inc.
+signer:Riot Games, Inc.
+signer:Ubisoft Entertainment
+signer:Uplay
+signer:JetBrains s.r.o.
+signer:Docker Inc.
+signer:VideoLAN
+signer:VideoLAN Organization
+# --- 目录白名单 (整目录视为可信) ---
+dir:C:\Windows\System32
+dir:C:\Windows\SysWOW64
+dir:C:\Program Files\Microsoft
+dir:C:\Program Files (x86)\Microsoft
+dir:C:\Program Files\Google
+dir:C:\Program Files\Mozilla
+dir:C:\Program Files\Tencent
+dir:C:\Program Files\Netease
+dir:C:\Program Files\Huawei
+dir:C:\Program Files (x86)\360
+
+# v1.60 (v2.15.15): 扩展目录白名单
+dir:C:\Program Files\Baidu
+dir:C:\Program Files (x86)\Baidu
+dir:C:\Program Files (x86)\Netease
+dir:C:\Program Files\Sogou
+dir:C:\Program Files\iQIYI
+dir:C:\Program Files\Lenovo
+dir:C:\Program Files\ASUS
+dir:C:\Program Files\Dell
+dir:C:\Program Files\HP
+dir:C:\Program Files (x86)\Steam
+dir:C:\Program Files\Steam
+dir:C:\Program Files\Epic Games
+dir:C:\Program Files\Riot Games
+dir:C:\Program Files\Ubisoft
+dir:C:\Program Files\JetBrains
+dir:C:\Program Files\Docker
+dir:C:\Program Files\VideoLAN
+# --- 路径白名单 (精确匹配) ---
+
+# --- 名称白名单 (按文件名, 慎用) ---
+signer:Zhuhai Kingsoft Office Software Co., Ltd.
+signer:kingsoft
+signer:zhuhai kingsoft
+signer:Qianwen
+signer:Alibaba (China) Network Technology Co.,Ltd.
+signer:alibaba
+signer:quark
+
+# v1.43: 减少启发式误报 - 知名合法软件白名单 (有签名/在知名目录下不再触发高危)
+signer:CPUID
+signer:CPUID Software
+dir:C:\ProgramData\CPUID Software
+signer:Shanghai Bilibili Technology Co., Ltd.
+signer:Bilibili Inc.
+signer:bcut
+signer:Bcut
+# Bcut 装在 %USERPROFILE%\AppData\Local\BcutBilibili, 不同用户名路径不同, 签名兜底
+# 若仍有 dll 误报, 请把实际 dll 路径加到"路径白名单"段落

@@ -1,0 +1,19 @@
+# 银狐木马 已知恶意哈希库 (手动维护区，入库)
+# 支持 MD5(32位 hex) 与 SHA-256(64位 hex)，后面可接 " # 注释"。
+# 自动更新内容会写入 ioc/auto_hashes.txt，请勿手改本文件中的自动条目。
+# 来源: 奇安信威胁情报中心 2026-07《银狐Ghost分发商投递MODBEACON》(https://ti.qianxin.com/...)
+13aff4f82171d42e7f0a72dc96346c45 # MODBEACON 样本 MD5 [奇安信2026-07]
+f6c69d8026d2114e5322f06f69471a6c # MODBEACON 样本 MD5 [奇安信2026-07]
+9913b09fddbe47d4459c1ae0aa8c4953 # MODBEACON 样本 MD5 [奇安信2026-07]
+e32797efc17c8a9a663f6f0e64fcfa08 # MODBEACON 样本 MD5 [奇安信2026-07]
+
+# ===== 测试样本哈希 (无害, 供功能测试) =====
+# 与 ioc/update 及引擎内置库同步, /update 后依然生效
+# 发票_2026.png (Windows测试样本)
+a6b425ce27bc6b1e109e13cf5b87b2db # 测试样本 发票_2026.png MD5
+d5c36a5c601c1070dd91456e47e1e3da337821f6cdcef8b45733dae93226588b # 测试样本 发票_2026.png SHA256
+# 2026工资表.doc.exe (Windows测试样本)
+de0d841b37a93750da276ca8c83bed23 # 测试样本 2026工资表.doc.exe MD5
+7be46b2c065d8f69c941b2500ee8632d01b87479dfce6950ce8d921717f50643 # 测试样本 2026工资表.doc.exe SHA256
+94fead4edb5b443b56214bc1adf19b3a0942bac2d0eed7d6ce3ca209cbcfdf00 # install_h8.0.10.exe SHA256 [银狐样本 2026-08]
+e8b0d5cddd068e85058ee419c8e9b7c8865487d584d26266b4ec1f04374c8ce5 # install_h8.0.10.zip SHA256 [银狐样本 2026-08]
