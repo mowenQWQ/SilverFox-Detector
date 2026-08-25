@@ -89,3 +89,5 @@ verify authenticity with the marker above. Once the AV cloud reputation builds u
 ## Disclaimer
 
 For legal security self-checking only. The author is not responsible for misuse.
+
+This tool was generated with the assistance of AI.
