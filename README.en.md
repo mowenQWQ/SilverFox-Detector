@@ -1,6 +1,12 @@
 # SilverFox Detector (银狐特攻) — Stubborn Trojan Scanner & Killer
 
-> **Author**: MoWenQWQ (莫问QWQ) · **License**: MIT · **Version**: v2.15.75 · **Engine**: PowerShell v1.94
+> **v2.15.74 update (2026-09-12)**: `[2/7]` added **PE structural heuristics** — detects
+> "white-signed dual-segment bundling" droppers (front packed stub + huge trailing overlay/NSIS):
+> `/struct=1 observe-only (default) / 2 multi-signal stacking / 3 quarantine on high risk`;
+> `/deep-pe` enables **import-table sensitive-API scanning** (keylogger / clipboard / inject / download-exec).
+> Sample **WeChatWin_4.1.13.exe (244MB)** MD5/SHA256 added to `known_hashes` — exact quarantine on hit.
+
+> **Author**: MoWenQWQ (莫问QWQ) · **License**: MIT · **Version**: v2.15.74 · **Engine**: PowerShell v1.95
 > [中文](./README.md) | **English**
 
 An open-source Windows security utility focused on **SilverFox-class persistent trojans** —
@@ -29,6 +35,11 @@ This tool reverses every one of those behaviors into **detection + repair**.
   list, quarantine (recoverable).
 
 ### Pipeline (9 stages)
+> **v1.95 new**: `[2/7]` built-in **PE structural heuristics** — parses the file-header section table to
+> flag "dual-segment overlay (huge trailing data) + packed section (.ndata/UPX/zero-size)" white-signed bundling;
+> `/struct=1 observe-only (default)/2 multi-signal/3 quarantine on high-risk`; `/deep-pe` scans import-table
+> sensitive APIs (keylogger/clipboard/inject/download-exec).
+
 `[1/7]` process/commandline → `[2/7]` file (MZ spoof/signature/hash/IOC) →
 `[3/7]` registry autostart → `[4/7]` scheduled tasks (Win7 compatible) →
 `[5/7]` services (drivers / IFEO) → `[6/7]` outbound C2 → `[7/7]` WMI persistence →
