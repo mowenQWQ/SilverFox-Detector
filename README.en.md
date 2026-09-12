@@ -6,7 +6,9 @@
 > `/deep-pe` enables **import-table sensitive-API scanning** (keylogger / clipboard / inject / download-exec).
 > Sample **WeChatWin_4.1.13.exe (244MB)** MD5/SHA256 added to `known_hashes` — exact quarantine on hit.
 
-> **Author**: MoWenQWQ (莫问QWQ) · **License**: MIT · **Version**: v2.15.74 · **Engine**: PowerShell v1.95
+> **v2.15.76 (2026-09-13)**: version aligned with dual-site release tag; built-in version/build tag synced (build=p67-20260913-v21576); full toolkit (3-tier exe) rebuilt & published.
+>
+> **Author**: MoWenQWQ (莫问QWQ) · **License**: MIT · **Version**: v2.15.76 · **Engine**: PowerShell v1.95
 > [中文](./README.md) | **English**
 
 An open-source Windows security utility focused on **SilverFox-class persistent trojans** —

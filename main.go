@@ -364,15 +364,15 @@ func tierSuffix() string {
 	}
 }
 
-const AppTitle = "顽固木马扫描专杀-银狐特攻 v2.15.74" // 实际后缀在 winMain 前由 buildTier 动态拼接 (v2.15.20=层3 C# 编译/运行时双修复: MSG 未初始化 CS0165 + GetModuleHandleW 模块错误, 隐藏窗口终于生效; 对外名称规范化为「银狐检测工具」)
+const AppTitle = "顽固木马扫描专杀-银狐特攻 v2.15.76" // 实际后缀在 winMain 前由 buildTier 动态拼接 (v2.15.20=层3 C# 编译/运行时双修复: MSG 未初始化 CS0165 + GetModuleHandleW 模块错误, 隐藏窗口终于生效; 对外名称规范化为「银狐检测工具」)
 
 const (
-	AppTitleBase = "顽固木马扫描专杀-银狐特攻 v2.15.74"
+	AppTitleBase = "顽固木马扫描专杀-银狐特攻 v2.15.76"
 )
 
 // buildTag 用于从日志辨识部署的是哪一版补丁二进制: 避免"用户双击的是旧 exe / 看门狗锁住未覆盖"时
 // 无法判断修复是否生效. 每次重新编译分发包都改这个值(同时记到 skill 版本号).
-const buildTag = "p66-20260824-author"
+const buildTag = "p67-20260913-v21576"
 
 type WNDCLASSEXW struct {
 	CbSize        uint32
@@ -1644,7 +1644,7 @@ func runCLI(argv []string) int {
 			logFile.Close()
 		}
 	}()
-	logf("=== 银狐特攻 CLI 模式启动 v2.15.74 (tier=%d args=%v) ===", buildTier, argv)
+	logf("=== 银狐特攻 CLI 模式启动 v2.15.76 (tier=%d args=%v) ===", buildTier, argv)
 	var path string
 	registerSh := false
 	unregisterSh := false
@@ -2245,7 +2245,7 @@ func preloadGUIBasics() {
 func winMain() (int, error) {
 	logf("winMain: stage-enter")
 	// 部署辨识: 日志首行打印构建标签, 用户据此确认跑的是修复版而非旧 exe.
-	logf("=== 银狐特攻 启动 v2.15.74 (tier=%d) build=%s ===", buildTier, buildTag)
+	logf("=== 银狐特攻 启动 v2.15.76 (tier=%d) build=%s ===", buildTier, buildTag)
 	// 旧版在启动期就调 CoInitializeEx(ole32)/InitCommonControlsEx(comctl32), 一旦这两个非必需 DLL 的
 	// DllMain 返回 FALSE(EDR/AV 拦截/SxS 损坏)即 panic 崩溃, GUI 永不开. 本版彻底移除启动期对
 	// ole32/comctl32 的加载 —— 控件全是系统内置 Button/Edit/Static, 这两个初始化本就多余;
