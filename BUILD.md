@@ -29,4 +29,4 @@ go build -ldflags "-s -w -X main.buildTierStr=3 -H windowsgui" -o 如果主程�
 
 ## 版本
 - 全链版本: main.go AppTitle/buildTag + engine 头注释 + versioninfo.json 需同步
-- manifest (完整性清单) 由引擎 auto 计算; 路径: legacy/integrity.manifest
+- manifest (完整性清单) 由发布脚本 `generate-integrity.ps1` 生成（与引擎/main 同 salt+签名算法）; 路径: legacy/integrity.manifest（改动任何工具文件后，对发布包 legacy 目录重跑该脚本即可重签，避免自检误报"被篡改"）

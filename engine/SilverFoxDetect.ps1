@@ -1,4 +1,7 @@
-﻿# ===================== 银狐特攻 PowerShell engine v1.94 =====================
+﻿# ===================== 银狐特攻 PowerShell engine v1.95 =====================
+# v1.95 (v2.15.74): [2/7]新增 PE 结构启发 —— 识别"双段 overlay(尾部巨量附加数据)+加壳节(.ndata/UPX/零尺寸节)"类型的白签名捆绑投递样本
+#                   (典型: 前置小存根PE + 尾部NSIS真程序 + .ndata加壳, keylogger暗桩). /struct=1(默认仅观察)/2多信号叠加/3高危即隔离;
+#                   /deep-pe 开启导入表敏感API(keylogger/剪贴板/注入/下载执行)扫描. 实例样本 WeChatWin_4.1.13 哈希已入 known_hashes.
 # v1.94 (v2.15.73): 全盘检测改为真全盘(所有固定分区根+深度999全递归; 此前只扫用户目录+系统关键目录浅扫, 用户反馈"不全盘")
 # v1.93 (v2.15.72): 抽取 Invoke-DefExclCheck(Defender排除项检测函数), 扫描主流程新增 [9] Defender排除项检查(病毒加自身白名单让杀软失明)
 # v1.92 (v2.15.71): thirdAV 检测提前到函数开头(阶段1/2 在原位置之前执行, 导致策略警告未降噪); 阶段5 StartType/阶段15 防护补 thirdAV 信息; 360 自启名加宽+进程运行判断(有360等时 Defender 策略/服务/防护停用属正常, 降为信息) + DNS 常见公共域名白名单 + 杀软自启缺失仅按已安装厂商匹配 + Sense 等非必需服务移出缺失检测
@@ -1042,6 +1045,170 @@ function Test-SafeHarbor {
   $s = Get-SignatureStatus $Path
   return ($s.Valid -and $s.Signer)
 }
+# ===================== v1.95: PE 结构启发 (静态识别"双段 overlay / 加壳节") =====================
+# 背景: 银狐"白签名双段捆绑"样本(如 WeChatWin_4.1.13.exe, 244MB) —— 前置小存根PE + 尾部
+#       巨量 overlay(NSIS/真程序) + 前置加壳(.ndata/UPX/零尺寸节)。旧版只读 MZ 2 字节判 PE,
+#       不加解析 e_lfanew/节表, 对这类"依赖结构深读才可见"的样本完全漏过; 且 >50MB 连验签都跳过。
+# 本函数只读文件头(≤4096B)轻量解析: 算 overlay(尾部附加)大小/占比 + 加壳节(壳名/零原尺寸节)。
+# 任何解析失败均返回 $null, 安全降级不误报。
+function Get-PEStruct {
+  param([string]$Path, [long]$Length)
+  if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return $null }
+  $r = @{ Overlay=0L; OverlayRatio=0.0; Packed=$false; Sections=@(); SecCount=0 }
+  try {
+    $fs = [System.IO.File]::OpenRead($Path)
+    $n = [Math]::Min(4096L, $fs.Length)
+    $buf = New-Object byte[] $n
+    [void]$fs.Read($buf, 0, $n)
+    $fs.Close()
+    if ($buf.Length -lt 0x40) { return $null }
+    $peOff = [BitConverter]::ToInt32($buf, 0x3C)
+    if ($peOff -lt 0 -or ($peOff + 24) -gt $buf.Length) { return $null }
+    if ($buf[$peOff] -ne 0x50 -or $buf[$peOff+1] -ne 0x45) { return $null }   # 'P','E'
+    $numSec = [BitConverter]::ToUInt16($buf, $peOff+6)
+    $optSize = [BitConverter]::ToUInt16($buf, $peOff+20)
+    $secTable = $peOff + 24 + $optSize
+    $maxRawEnd = 0L
+    $packedSec = $false
+    $secNames = @()
+    $parsedSec = 0
+    if ($numSec -gt 0 -and $secTable -gt 0 -and $secTable -lt $buf.Length) {
+      for ($i=0; $i -lt $numSec; $i++) {
+        $o = $secTable + $i*40
+        if (($o + 40) -gt $buf.Length) { break }
+        $parsedSec++
+        $name = ([System.Text.Encoding]::ASCII.GetString($buf, $o, 8)).TrimStart([char]0) -replace '\0',''
+        $rawSize = [BitConverter]::ToUInt32($buf, $o+16)
+        $rawPtr  = [BitConverter]::ToUInt32($buf, $o+20)
+        $secNames += $name
+        $end = [long]$rawPtr + [long]$rawSize
+        if ($end -gt $maxRawEnd) { $maxRawEnd = $end }
+        if (-not $packedSec) {
+          $up = $name.TrimStart('.').ToLower()
+          # 已知壳/内存解压节名; .bss 类零尺寸节是合法未初始化数据, 排除
+          if ($up -in @('upx0','upx1','upx2','vmp','packed','ri5','mpr1','aspack','adata','petite','nsp','enigma','ndata','themida','cryptone','tls0')) { $packedSec = $true }
+          elseif ($rawSize -eq 0 -and $name -notin @('.bss','.idata','.tls','.stab','.stabstr')) { $packedSec = $true }   # 零原始尺寸 -> 内存解压迹象
+        }
+      }
+    }
+    if ($parsedSec -eq 0) { return $null }   # 连节表都解析不出, 当非标准PE, 不报
+    $ov = 0L
+    if ($Length -gt $maxRawEnd) { $ov = $Length - $maxRawEnd }
+    $r.Overlay = $ov
+    $r.OverlayRatio = if ($Length -gt 0) { [double]$ov / $Length } else { 0.0 }
+    $r.Packed = $packedSec
+    $r.Sections = $secNames
+    $r.SecCount = $parsedSec
+    return $r
+  } catch { return $null }
+}
+# ===================== v1.95: 导入表敏感 API 扫描 (keylogger/剪贴板/注入/下载执行) =====================
+# 默认由 /deep-pe 开关控制(默认关)。解析导入目录, 把被导入 DLL 的函数名(IMPORT_NAME)与敏感集合比对,
+# 返回命中的敏感"类"列表。为零返回空数组, 解析失败(无导入表/截断/畸形)同样返回空, 安全降级不误报。
+# 作用: 识别"存根导入表含键盘钩子/剪贴板/注入 API"的投递脚本(白签名样本的典型暗桩)。
+function Get-ImportSensitive {
+  param([string]$Path)
+  $sensMap = [ordered]@{
+    KEYBOARD  = @('getasynckeystate','sethookswin32','setwindowshookex','getkeystate','setwindowshookexw','setwindowshookexa')
+    CLIPBOARD = @('openclipboard','getclipboarddata','setclipboarddata','emptyclipboard')
+    INJECT    = @('virtualallocex','writeprocessmemory','createremotethread','ntmapviewofsection','queueuserapc')
+    DOWNLOAD  = @('urldownloadtofile','urlmon','winexec','shellexecute','shellexecuteexw','wscript.shell','msxml2.xmlhttp','winhttp')
+  }
+  $hitClasses = [System.Collections.Generic.List[string]]::new()
+  try {
+    if (-not $Path -or -not (Test-Path -LiteralPath $Path)) { return @() }
+    $fs = [System.IO.File]::OpenRead($Path)
+    $n = [Math]::Min([int]([Math]::Min(262144L, $fs.Length)), $fs.Length)   # 前 256KB 一般含 DOS/PE头/节表/导入表
+    $buf = New-Object byte[] $n
+    [void]$fs.Read($buf, 0, $n)
+    $fs.Close()
+    if ($buf.Length -lt 0x40) { return @() }
+    $peOff = [BitConverter]::ToInt32($buf, 0x3C)
+    if ($peOff -lt 0 -or ($peOff + 24) -gt $buf.Length) { return @() }
+    if ($buf[$peOff] -ne 0x50 -or $buf[$peOff+1] -ne 0x45) { return @() }
+    $magic = [BitConverter]::ToUInt16($buf, $peOff+24)
+    if ($magic -ne 0x10B -and $magic -ne 0x20B) { return @() }   # PE32 / PE32+
+    $numSec = [BitConverter]::ToUInt16($buf, $peOff+6)
+    $optSize = [BitConverter]::ToUInt16($buf, $peOff+20)
+    $secTable = $peOff + 24 + $optSize
+    # 数据目录: PE32 offset=96, PE32+ offset=112 (index1 = 导入表)
+    $ddOff = $peOff + 24 + $(if ($magic -eq 0x10B) { 96 } else { 112 })
+    # RVA -> 文件偏移 映射 (构建节映射)
+    $impRva = 0; $impSize = 0
+    if (($ddOff + 16) -le $buf.Length) {
+      $impRva = [BitConverter]::ToUInt32($buf, $ddOff + 1*8)
+      $impSize = [BitConverter]::ToUInt32($buf, $ddOff + 1*8 + 4)
+    }
+    if ($impRva -eq 0) { return @() }
+    function Rva2Off([uint32]$rva) {
+      for ($i=0; $i -lt $numSec; $i++) {
+        $o = $secTable + $i*40
+        if (($o+40) -gt $buf.Length) { return -1 }
+        $va = [BitConverter]::ToUInt32($buf, $o+12)
+        $vs = [BitConverter]::ToUInt32($buf, $o+8)
+        $rp = [BitConverter]::ToUInt32($buf, $o+20)
+        $rs = [BitConverter]::ToUInt32($buf, $o+16)
+        if ($rva -ge $va -and $rva -lt ($va + $vs)) {
+          return ($rp + ($rva - $va))
+        }
+      }
+      return -1
+    }
+    $impOff = Rva2Off $impRva
+    if ($impOff -lt 0 -or $impOff -ge $buf.Length) { return @() }
+    # 遍历 IMAGE_IMPORT_DESCRIPTOR (20B each, 以全 0 结束)
+    $o = $impOff
+    while (($o + 20) -le $buf.Length) {
+      $oft = [BitConverter]::ToUInt32($buf, $o+0)    # OriginalFirstThunk
+      $nt  = [BitConverter]::ToUInt32($buf, $o+16)   # FirstThunk
+      $nameRva = [BitConverter]::ToUInt32($buf, $o+12)
+      $dllName = ''
+      if ($nameRva -ne 0) {
+        $nOff = Rva2Off $nameRva
+        if ($nOff -ge 0 -and $nOff -lt $buf.Length) {
+          $e = $nOff
+          while ($e -lt $buf.Length -and $buf[$e] -ne 0) { $e++ }
+          if ($e -gt $nOff) { $dllName = [System.Text.Encoding]::ASCII.GetString($buf, $nOff, $e-$nOff) }
+        }
+      }
+      $thunkRva = if ($oft -ne 0) { $oft } else { $nt }
+      if ($thunkRva -ne 0) {
+        $tOff = Rva2Off $thunkRva
+        $step = if ($magic -eq 0x10B) { 4 } else { 8 }
+        if ($tOff -ge 0 -and $tOff -lt $buf.Length) {
+          $to = $tOff
+          $guard = 0
+          while ($guard -lt 2000 -and ($to + $step) -le $buf.Length) {
+            $hn = if ($magic -eq 0x10B) { [BitConverter]::ToUInt32($buf, $to) } else { [BitConverter]::ToUInt64($buf, $to) }
+            $hnU = [uint64]$hn
+            if ($hnU -eq 0) { break }   # 数组结束
+            if (($hnU -band 0x80000000) -eq 0) {   # 非导入序号(高位置0) -> 指向 Hint/Name
+              $nameRva2 = if ($magic -eq 0x10B) { [uint32]$hnU } else { [uint32]($hnU -band 0xFFFFFFFF) }
+              $no = Rva2Off $nameRva2
+              if ($no -ge 0 -and $no -lt $buf.Length -and ($no+2) -lt $buf.Length) {
+                $s = $no + 2   # 跳过 2 字节 Hint
+                $e = $s
+                while ($e -lt $buf.Length -and $buf[$e] -ne 0) { $e++ }
+                if ($e -gt $s) {
+                  $fname = [System.Text.Encoding]::ASCII.GetString($buf, $s, $e-$s).ToLower()
+                  foreach ($k in $sensMap.Keys) {
+                    if ($hitClasses -notcontains $k -and ($sensMap[$k] -contains $fname)) { $hitClasses.Add($k) }
+                  }
+                }
+              }
+            }
+            $to += $step; $guard++
+          }
+        }
+      }
+      $z = [BitConverter]::ToUInt32($buf, $o+0) -bor [BitConverter]::ToUInt32($buf, $o+4) -bor [BitConverter]::ToUInt32($buf, $o+8) -bor [BitConverter]::ToUInt32($buf, $o+12) -bor [BitConverter]::ToUInt32($buf, $o+16)
+      if ($z -eq 0) { break }
+      $o += 20
+      if ($o -gt ($impOff + $impSize + 40)) { break }   # 防御: 超出导入表区域
+    }
+    return @($hitClasses)
+  } catch { return @() }
+}
 # ===================== v1.53: 风险评分关联引擎 (降误报核心) =====================
 # 设计动机: 旧版任何单一弱启发式(命令行含 -w hidden / 计划任务指向 appdata / WMI 筛选器)
 #            都直接判"高危"(Flag+隔离), 导致大量误报(正常软件更新任务/监控Agent等).
@@ -1240,6 +1407,8 @@ $Ring0=$false
 $script:SelfProtect=$true
 $script:BreakOnTerm=$false    # v1.50: 蓝屏仅 /bruteprotect 显式开启
 $ZeroTrust=$false
+$StructPolicy=1          # v1.95: PE结构启发处置档位 1仅观察(默认)/2多信号叠加升级/3高危即隔离
+$DeepPE=$false           # v1.95: 导入表敏感API扫描 - 默认关, /deep-pe 开启
 $Safe=$false
 $Offline=$false
 $Immune=$false
@@ -1351,9 +1520,11 @@ foreach ($a in $args) {
     { $_ -in '/purge','-purge' }               { $Purge=$true }
     { $_ -in '/rollback','-rollback' }         { $Rollback=$true }
     { $_ -in '/quick','-quick' }               { $Quick=$true }
+    { $_ -in '/deep-pe','-deep-pe' }           { $DeepPE=$true }   # v1.95: 开启导入表敏感API扫描
     }
     if ($a -match '^/threads=(\d+)$') { $Threads = [int]$Matches[1]; if ($Threads -lt 1) { $Threads = 1 }; if ($Threads -gt 16) { $Threads = 16 } }
-  if ($a -notmatch '^/[-a-zA-Z0-9]+$' -and $a -notmatch '^/threads=') { $script:PathArgs += $a }
+    if ($a -match '^/struct=([123])$') { $StructPolicy = [int]$Matches[1] }   # v1.95: /struct=1|2|3
+  if ($a -notmatch '^/[-a-zA-Z0-9]+$' -and $a -notmatch '^/threads=' -and $a -notmatch '^/struct=') { $script:PathArgs += $a }
   }
 # v1.42/v1.13: 统计容器显式初始化 (此前未初始化, $null+= 导致汇总恒 1 项/观察数据丢失)
 $script:susp = @()
@@ -3963,6 +4134,51 @@ try {
       $qm = Quarantine $fp $reason
           Flag ("  [高危文件][$reason] " + $fp + "  [" + $qm + "]")
           continue
+        }
+        # ===== v1.95: PE 结构启发 (双段 overlay / 加壳节) — 白签名捆绑/大文件专用静态信号 =====
+        # 不依赖签名判有效; 但对含白名单/信任签名的小文件(<=50MB)跳过以降噪(与既有启发一致;
+        # 大文件>50MB不走 wlSkip, 这里照样会跑)。命中默认仅观察(档位1), 不误杀官方大安装器
+        # (官方微信/Adobe/Office 多为 NSIS, 尾部 overlay 也大)。档位2需叠加信号, 档位3才直接隔离。
+        if (-not $wlSkip -and $isPE) {
+          $struct = Get-PEStruct $fp $f.Length
+          $structHit = $false; $structWhy = ""; $im = @()
+          if ($struct) {
+            if ($struct.Packed) { $structHit=$true; $structWhy += "加壳节(" + (@($struct.Sections) -join ',') + ")" }
+            if ($struct.Overlay -ge 8388608 -and $struct.OverlayRatio -ge 0.5) {
+              $mb = [math]::Round($struct.Overlay/1048576.0,1)
+              if ($structWhy) { $structWhy += " + " }
+              $structWhy += ("双段overlay {0}MB({1:P0})" -f $mb, $struct.OverlayRatio)
+            }
+          }
+          if ($structHit) {
+            $obsFileCount++
+            $im = @()
+            if ($DeepPE) { $im = @(Get-ImportSensitive $fp) }
+            Observe ("  [PE结构][观察] " + $fp + "  -> " + $structWhy + $(if ($im.Count -gt 0) { "  [导入敏感API:" + ($im -join '/') + "]" } else { "" }))
+            # 档位3: 结构异常即高危隔离 (最激进, 用户自选)
+            if ($StructPolicy -eq 3) {
+              $highFlag++
+              Add-ThreatLock $fp $structWhy
+              $qm = Quarantine $fp $structWhy
+              Flag ("  [高危文件][PE结构异常:" + $structWhy + "] " + $fp + "  [" + $qm + "]")
+              continue
+            }
+            # 档位2: 多信号叠加才高危 —— 导入敏感API>=3类 / 文件名伪装 / 隐藏系统属性
+            if ($StructPolicy -eq 2) {
+              $boost=$false; $boostWhy=""
+              if ($im.Count -ge 3) { $boost=$true; $boostWhy="导入敏感API(" + ($im -join '/') + ")" }
+              elseif ($fn -match '\.png\.exe$|\.jpg\.exe$|\.gif\.exe$|\.txt\.exe$|\.doc\.exe$') { $boost=$true; $boostWhy="双扩展名伪装" }
+              elseif ($isHidden -or $isSystem) { $boost=$true; $boostWhy="隐藏/系统属性" }
+              if ($boost) {
+                $highFlag++
+                Add-ThreatLock $fp ($structWhy + " + " + $boostWhy)
+                $qm = Quarantine $fp ($structWhy + " + " + $boostWhy)
+                Flag ("  [高危文件][PE结构异常+叠加] " + $fp + "  [" + $qm + "]")
+                continue
+              }
+            }
+            # 档位1(默认): 仅观察, 不隔离, 继续走后续检查
+          }
         }
         # 3) v1.28: 隐藏/系统属性 - 可执行则高危, 否则观察
         # v1.43: Bcut/Inno Setup/老版本 dll 大量设了 Hidden 属性, 单独该属性不再是高危证据.
