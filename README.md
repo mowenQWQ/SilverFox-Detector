@@ -4,6 +4,8 @@
 > 参数 `/struct=1仅观察(默认)/2多信号叠加/3高危即隔离`; `/deep-pe` 可开启**导入表敏感 API 扫描**(keylogger/剪贴板/注入/下载执行)。
 > 对应实测样本 **WeChatWin_4.1.13.exe(244MB)** 的 MD5/SHA256 已补入 `known_hashes`，入库即精确隔离。
 
+> ⚠️ **AI 使用说明**：本作品由 AI 辅助生成（生成时间：2026-08-25）。仅供学习与参考使用，发布、引用或投入使用前请人工核实关键信息。
+
 > **v2.15.76 (2026-09-13)**: 版本号对齐双站 release tag；内置版本/构建标签同步（build=p67-20260913-v21576）；完整工具包（三档 exe）重新构建发布。
 >
 > **作者**: 莫问QWQ (MoWenQWQ) · **开源协议**: MIT (见 LICENSE)
@@ -104,12 +106,3 @@
 ## 免责声明
 
 本工具仅用于合法安全防护/自查,请勿用于未授权系统。作者不对滥用负责。
-本工具使用ai进行生成
-
----
-
-## 🤖 AI 使用声明 / AI Usage Disclosure
-
-本项目在开发与维护过程中使用了 AI 编程助手（Claude / Anthropic）辅助代码编写、文档整理与问题排查；核心决策、内容审核与最终发布由维护者完成。
-
-This project was developed and maintained with the assistance of an AI coding assistant (Claude / Anthropic) for coding, documentation, and troubleshooting. Core decisions, content review, and final releases are made by the maintainer.
