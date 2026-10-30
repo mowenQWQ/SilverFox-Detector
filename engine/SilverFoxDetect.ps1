@@ -1,5 +1,5 @@
-﻿# ===================== 银狐特攻 PowerShell engine v1.95 =====================
-# v1.95 (v2.15.76): [2/7]新增 PE 结构启发 —— 识别"双段 overlay(尾部巨量附加数据)+加壳节(.ndata/UPX/零尺寸节)"类型的白签名捆绑投递样本
+# ===================== 银狐特攻 PowerShell engine v1.96 =====================
+# v1.96 (v2.15.76): [2/7]新增 PE 结构启发 —— 识别"双段 overlay(尾部巨量附加数据)+加壳节(.ndata/UPX/零尺寸节)"类型的白签名捆绑投递样本
 #                   (典型: 前置小存根PE + 尾部NSIS真程序 + .ndata加壳, keylogger暗桩). /struct=1(默认仅观察)/2多信号叠加/3高危即隔离;
 #                   /deep-pe 开启导入表敏感API(keylogger/剪贴板/注入/下载执行)扫描. 实例样本 WeChatWin_4.1.13 哈希已入 known_hashes.
 # v1.94 (v2.15.73): 全盘检测改为真全盘(所有固定分区根+深度999全递归; 此前只扫用户目录+系统关键目录浅扫, 用户反馈"不全盘")
@@ -1045,7 +1045,7 @@ function Test-SafeHarbor {
   $s = Get-SignatureStatus $Path
   return ($s.Valid -and $s.Signer)
 }
-# ===================== v1.95: PE 结构启发 (静态识别"双段 overlay / 加壳节") =====================
+# ===================== v1.96: PE 结构启发 (静态识别"双段 overlay / 加壳节") =====================
 # 背景: 银狐"白签名双段捆绑"样本(如 WeChatWin_4.1.13.exe, 244MB) —— 前置小存根PE + 尾部
 #       巨量 overlay(NSIS/真程序) + 前置加壳(.ndata/UPX/零尺寸节)。旧版只读 MZ 2 字节判 PE,
 #       不加解析 e_lfanew/节表, 对这类"依赖结构深读才可见"的样本完全漏过; 且 >50MB 连验签都跳过。
@@ -1102,7 +1102,7 @@ function Get-PEStruct {
     return $r
   } catch { return $null }
 }
-# ===================== v1.95: 导入表敏感 API 扫描 (keylogger/剪贴板/注入/下载执行) =====================
+# ===================== v1.96: 导入表敏感 API 扫描 (keylogger/剪贴板/注入/下载执行) =====================
 # 默认由 /deep-pe 开关控制(默认关)。解析导入目录, 把被导入 DLL 的函数名(IMPORT_NAME)与敏感集合比对,
 # 返回命中的敏感"类"列表。为零返回空数组, 解析失败(无导入表/截断/畸形)同样返回空, 安全降级不误报。
 # 作用: 识别"存根导入表含键盘钩子/剪贴板/注入 API"的投递脚本(白签名样本的典型暗桩)。
@@ -1407,8 +1407,8 @@ $Ring0=$false
 $script:SelfProtect=$true
 $script:BreakOnTerm=$false    # v1.50: 蓝屏仅 /bruteprotect 显式开启
 $ZeroTrust=$false
-$StructPolicy=1          # v1.95: PE结构启发处置档位 1仅观察(默认)/2多信号叠加升级/3高危即隔离
-$DeepPE=$false           # v1.95: 导入表敏感API扫描 - 默认关, /deep-pe 开启
+$StructPolicy=1          # v1.96: PE结构启发处置档位 1仅观察(默认)/2多信号叠加升级/3高危即隔离
+$DeepPE=$false           # v1.96: 导入表敏感API扫描 - 默认关, /deep-pe 开启
 $Safe=$false
 $Offline=$false
 $Immune=$false
@@ -1520,10 +1520,10 @@ foreach ($a in $args) {
     { $_ -in '/purge','-purge' }               { $Purge=$true }
     { $_ -in '/rollback','-rollback' }         { $Rollback=$true }
     { $_ -in '/quick','-quick' }               { $Quick=$true }
-    { $_ -in '/deep-pe','-deep-pe' }           { $DeepPE=$true }   # v1.95: 开启导入表敏感API扫描
+    { $_ -in '/deep-pe','-deep-pe' }           { $DeepPE=$true }   # v1.96: 开启导入表敏感API扫描
     }
     if ($a -match '^/threads=(\d+)$') { $Threads = [int]$Matches[1]; if ($Threads -lt 1) { $Threads = 1 }; if ($Threads -gt 16) { $Threads = 16 } }
-    if ($a -match '^/struct=([123])$') { $StructPolicy = [int]$Matches[1] }   # v1.95: /struct=1|2|3
+    if ($a -match '^/struct=([123])$') { $StructPolicy = [int]$Matches[1] }   # v1.96: /struct=1|2|3
   if ($a -notmatch '^/[-a-zA-Z0-9]+$' -and $a -notmatch '^/threads=' -and $a -notmatch '^/struct=') { $script:PathArgs += $a }
   }
 # v1.42/v1.13: 统计容器显式初始化 (此前未初始化, $null+= 导致汇总恒 1 项/观察数据丢失)
@@ -1775,7 +1775,7 @@ if (-not ($Immune -or $Repair -or $Trace) -and ($AutoUpdate -or (Need-Update $Sc
 $hashMD5 = @{}; $hashSHA = @{}
 function Load-Hashes($f){
   if (Test-Path -LiteralPath $f) {
-    Get-Content $f | Where-Object { $_ -and -not $_.StartsWith('#') } | ForEach-Object {
+    Get-Content $f | Where-Object { $_ -and -not $_.Trim().StartsWith('#') } | ForEach-Object {
       if ($_ -match '([0-9a-fA-F]{64})') { $hashSHA[$Matches[1].ToLower()] = $true }
       elseif ($_ -match '([0-9a-fA-F]{32})') { $hashMD5[$Matches[1].ToLower()] = $true }
     }
@@ -1789,8 +1789,9 @@ $c2Domains = @{}; $c2IPs = @{}
 function Load-C2($f){
   if (Test-Path -LiteralPath $f) {
     Get-Content $f | Where-Object { $_ -and -not $_.StartsWith('#') } | ForEach-Object {
-      $t = $_.Trim()
+      $t = ($_ -replace '\s+#.*$', '').Trim()   # v1.96: 剥离行内注释
       if ($t -match '^\d{1,3}(\.\d{1,3}){3}$') { $c2IPs[$t] = $true }
+      elseif ($t -match '^(\d{1,3}(\.\d{1,3}){3}):\d+$') { $c2IPs[$Matches[1]] = $true }  # v1.96: ip:port 取 IP
       elseif ($t) { $c2Domains[$t.ToLower()] = $true }
     }
   }
@@ -4135,7 +4136,7 @@ try {
           Flag ("  [高危文件][$reason] " + $fp + "  [" + $qm + "]")
           continue
         }
-        # ===== v1.95: PE 结构启发 (双段 overlay / 加壳节) — 白签名捆绑/大文件专用静态信号 =====
+        # ===== v1.96: PE 结构启发 (双段 overlay / 加壳节) — 白签名捆绑/大文件专用静态信号 =====
         # 不依赖签名判有效; 但对含白名单/信任签名的小文件(<=50MB)跳过以降噪(与既有启发一致;
         # 大文件>50MB不走 wlSkip, 这里照样会跑)。命中默认仅观察(档位1), 不误杀官方大安装器
         # (官方微信/Adobe/Office 多为 NSIS, 尾部 overlay 也大)。档位2需叠加信号, 档位3才直接隔离。

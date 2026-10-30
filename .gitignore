@@ -6,3 +6,6 @@
 _packsrc_*/
 __pycache__/
 *.pyc
+build/
+*.exe
+*.com

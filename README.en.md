@@ -6,9 +6,9 @@
 > `/deep-pe` enables **import-table sensitive-API scanning** (keylogger / clipboard / inject / download-exec).
 > Sample **WeChatWin_4.1.13.exe (244MB)** MD5/SHA256 added to `known_hashes` — exact quarantine on hit.
 
-> **v2.15.76 (2026-09-13)**: version aligned with dual-site release tag; built-in version/build tag synced (build=p67-20260913-v21576); full toolkit (3-tier exe) rebuilt & published.
+> **v2.15.77 (2026-09-13)**: version aligned with dual-site release tag; built-in version/build tag synced (build=p67-20260913-v21576); full toolkit (3-tier exe) rebuilt & published.
 >
-> **Author**: MoWenQWQ (莫问QWQ) · **License**: MIT · **Version**: v2.15.76 · **Engine**: PowerShell v1.95
+> **Author**: MoWenQWQ (莫问QWQ) · **License**: MIT · **Version**: v2.15.77 · **Engine**: PowerShell v1.96
 > [中文](./README.md) | **English**
 
 An open-source Windows security utility focused on **SilverFox-class persistent trojans** —
@@ -37,7 +37,7 @@ This tool reverses every one of those behaviors into **detection + repair**.
   list, quarantine (recoverable).
 
 ### Pipeline (9 stages)
-> **v1.95 new**: `[2/7]` built-in **PE structural heuristics** — parses the file-header section table to
+> **v1.96 new**: `[2/7]` built-in **PE structural heuristics** — parses the file-header section table to
 > flag "dual-segment overlay (huge trailing data) + packed section (.ndata/UPX/zero-size)" white-signed bundling;
 > `/struct=1 observe-only (default)/2 multi-signal/3 quarantine on high-risk`; `/deep-pe` scans import-table
 > sensitive APIs (keylogger/clipboard/inject/download-exec).

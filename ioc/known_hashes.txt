@@ -20,3 +20,16 @@ e8b0d5cddd068e85058ee419c8e9b7c8865487d584d26266b4ec1f04374c8ce5 # install_h8.0.
 # ===== 2026-09-12: 银狐白签名双段捆绑投递样本 (来自假官网下载, 静态分析已定性) =====
 181707745EC941157B4B28BC938ECDFE # WeChatWin_4.1.13.exe MD5 [白签名+NSIS双段捆绑+加壳存根, 2026-09-12]
 A1978685C5D12EE6ADC372A6348FFE1C9B2CA95A59787E4ED66279436B57C5E1 # WeChatWin_4.1.13.exe SHA256 [白签名+NSIS双段捆绑+加壳存根, 2026-09-12]
+
+# ==================== 2026-10 增量 (v1.96 入库) ====================
+# 来源: CN-SEC 银狐跟踪报告 5528360/5486832 (Triage 沙箱配置提取核验, 2026-10-20~23 批次)
+# --- ValleyRAT 容器样本 (VHD/ISO/EXE/DLL) ---
+313c688ba09c73036b647db92e5151c434641ae38018f9a164f3e4356ffc4526 # VHD容器"10.19财务对账单" C2=43.98.80.16:5252
+1f6466a3d23b93a21970a3b8964b353aab420eaccaacf2e8b1c210e431a92309 # ISO容器"Open_to_view" C2=47.243.109.132:5252
+5ebee19637f4552590ff6deede030abb30569d807e1ffbd421c90e1c493ed94c # 8.3MB完整包EXE C2=154.39.252.130 三连端口
+81fb2fc2f3f434d0567eaf8f449009208e2d1f22f02e84a2913c6e24a2f974f5 # 5.6MB DLL C2=kyur7oz.top 窃密模块
+# --- 共享 stager (跨VHD/ISO复用, 批次锚点) ---
+de0b9b6656c9e9fc9db4271610a09c2ae27d07c5a4757e94b2e0314a9dda6ee4 # 25KB stager 跨容器共享, retro-hunt 锚点
+# --- 白加黑侧加载 DLL (winhttp.dll 逐样本构建) ---
+8ab685f5e0acb693f03ab0b99d56d87359faa30fa8b7d54bd8382557a914e38f # winhttp.dll VHD批次
+14e261553c4dba16c53a50b6f1409858f7a897d1c2314e94d222273527452e34 # winhttp.dll ISO批次
